@@ -4,9 +4,9 @@
     }
 
     .data-section {
-        background-color: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
+        background: rgba(17, 24, 39, 0.55);
+        border: 1px solid rgba(31, 41, 55, 0.7);
+        border-radius: 12px;
         padding: 25px;
         margin-bottom: 25px;
     }
@@ -17,12 +17,12 @@
 
     .section-header h2 {
         font-size: 20px;
-        color: #111827;
+        color: #e5e7eb;
         margin-bottom: 6px;
     }
 
     .section-header p {
-        color: #6b7280;
+        color: #9ca3af;
         font-size: 14px;
     }
 
@@ -32,26 +32,93 @@
         gap: 25px;
     }
 
+    .dataset-name-section h3,
     .image-upload-section h3 {
-        color: #111827;
+        color: #e5e7eb;
+        font-size: .8rem;
+        font-weight: 600;
+        letter-spacing: .05em;
         margin-bottom: 6px;
     }
 
-    .image-upload-section > p {
+    .dataset-name-input {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #374151;
+        border-radius: 6px;
+        font-size: 14px;
+        font-family: inherit;
+        background: rgba(3, 7, 18, 0.5);
+        color: #e5e7eb;
+    }
+
+    .dataset-name-input::placeholder {
         color: #6b7280;
+    }
+
+    .dataset-name-input:focus {
+        outline: none;
+        border-color: #14b8a6;
+    }
+
+    .dataset-name-input.invalid {
+        border-color: rgba(248, 113, 113, 0.6);
+    }
+
+    .field-error {
+        display: none;
+        margin-top: 6px;
+        color: #f87171;
+        font-size: 13px;
+    }
+
+    .field-error:not(:empty) {
+        display: block;
+    }
+
+    /* upload result message (same as Acacia's #upload-message) */
+    .upload-message {
+        display: none;
+        margin-top: 12px;
+        padding: 10px;
+        border-radius: 6px;
+        font-size: 14px;
+    }
+
+    .upload-message.error {
+        display: block;
+        color: #fca5a5;
+        background: rgba(127, 29, 29, 0.25);
+        border: 1px solid rgba(248, 113, 113, 0.4);
+    }
+
+    .upload-message.success {
+        display: block;
+        color: #4ade80;
+        background: rgba(22, 101, 52, 0.2);
+        border: 1px solid rgba(74, 222, 128, 0.4);
+    }
+
+    .upload-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .image-upload-section > p {
+        color: #9ca3af;
         font-size: 13px;
         margin-bottom: 15px;
     }
 
     .upload-box {
-        border: 2px dashed #d1d5db;
-        border-radius: 8px;
+        border: 2px dashed rgba(20, 184, 166, 0.35);
+        border-radius: 10px;
         padding: 25px;
-        background-color: #f9fafb;
+        background: rgba(3, 7, 18, 0.4);
     }
 
     .upload-box:hover {
-        border-color: #9ca3af;
+        border-color: rgba(20, 184, 166, 0.6);
     }
 
     .upload-box input[type="file"] {
@@ -69,22 +136,22 @@
     }
 
     .image-upload-label:hover {
-        background-color: #f3f4f6;
+        background-color: rgba(20, 184, 166, 0.05);
     }
 
     .upload-icon {
         font-size: 32px;
-        color: #6b7280;
+        color: #14b8a6;
         margin-bottom: 10px;
     }
 
     .image-upload-label strong {
-        color: #374151;
+        color: #e5e7eb;
         margin-bottom: 6px;
     }
 
     .image-upload-label span {
-        color: #9ca3af;
+        color: #6b7280;
         font-size: 12px;
     }
 
@@ -96,8 +163,8 @@
     }
 
     .preview-item {
-        background-color: white;
-        border: 1px solid #e5e7eb;
+        background-color: #111827;
+        border: 1px solid rgba(31, 41, 55, 0.9);
         border-radius: 6px;
         overflow: hidden;
     }
@@ -111,7 +178,7 @@
 
     .preview-name {
         padding: 8px;
-        color: #4b5563;
+        color: #9ca3af;
         font-size: 11px;
         white-space: nowrap;
         overflow: hidden;
@@ -123,9 +190,9 @@
         align-items: center;
         gap: 15px;
         padding: 18px;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        background-color: #f9fafb;
+        border: 1px solid rgba(31, 41, 55, 0.6);
+        border-radius: 10px;
+        background: rgba(3, 7, 18, 0.35);
     }
     .annotation-file-control {
       display: flex;
@@ -138,13 +205,14 @@
     }
 
     .annotation-info h3 {
-        color: #111827;
+        color: #e5e7eb;
         margin-bottom: 5px;
-        font-size: 15px;
+        font-size: .8rem;
+        letter-spacing: .05em;
     }
 
     .annotation-info p {
-        color: #6b7280;
+        color: #9ca3af;
         font-size: 13px;
     }
 
@@ -154,21 +222,24 @@
 
     .file-button {
         padding: 9px 15px;
-        background-color: #e5e7eb;
-        border-radius: 5px;
-        color: #374151;
+        background-color: #111827;
+        border: 1px solid #374151;
+        border-radius: 6px;
+        color: #d1d5db;
         font-size: 13px;
         font-weight: 600;
         cursor: pointer;
         white-space: nowrap;
+        transition: all .15s;
     }
 
     .file-button:hover {
-        background-color: #d1d5db;
+        border-color: rgba(20, 184, 166, 0.45);
+        color: #5eead4;
     }
 
     .annotation-file-name {
-        color: #6b7280;
+        color: #9ca3af;
         font-size: 12px;
         max-width: 200px;
         overflow: hidden;
@@ -183,18 +254,19 @@
     }
 
     .upload-btn {
-        padding: 11px 22px;
+        padding: 10px 24px;
         border: none;
-        border-radius: 5px;
-        background-color: #1f2937;
-        color: white;
+        border-radius: 6px;
+        background: linear-gradient(to top, #0d9488, #14b8a6);
+        color: #fff;
         font-size: 14px;
         font-weight: 600;
+        font-family: inherit;
         cursor: pointer;
     }
 
     .upload-btn:hover {
-        background-color: #374151;
+        background: linear-gradient(to top, #0f766e, #0d9488);
     }
 
     .dataset-header {
@@ -204,10 +276,11 @@
     }
 
     .dataset-count {
-        padding: 6px 12px;
-        background-color: #f3f4f6;
+        padding: 4px 12px;
+        border: 1px solid rgba(20, 184, 166, 0.35);
+        background-color: rgba(20, 184, 166, 0.08);
         border-radius: 20px;
-        color: #4b5563;
+        color: #5eead4;
         font-size: 13px;
         font-weight: 600;
     }
@@ -226,18 +299,25 @@
         padding: 12px 15px;
         text-align: left;
         vertical-align: middle;
-        border-bottom: 1px solid #e5e7eb;
+        border-bottom: 1px solid rgba(31, 41, 55, 0.5);
         font-size: 14px;
     }
 
     .dataset-table th {
-        background-color: #f9fafb;
-        color: #374151;
+        font-size: .72rem;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        color: #9ca3af;
+        border-bottom-color: #1f2937;
         font-weight: 600;
     }
 
     .dataset-table td {
-        color: #4b5563;
+        color: #d1d5db;
+    }
+
+    .dataset-table td strong {
+        color: #e5e7eb;
     }
 
     .dataset-image-preview {
@@ -246,9 +326,9 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        background-color: #e5e7eb;
+        background-color: #1f2937;
         border-radius: 5px;
-        color: #6b7280;
+        color: #9ca3af;
         font-size: 10px;
     }
 
@@ -259,49 +339,61 @@
     }
 
     .file-info strong {
-        color: #374151;
+        color: #e5e7eb;
         font-size: 13px;
     }
 
     .file-info span {
-        color: #9ca3af;
+        color: #6b7280;
         font-size: 11px;
     }
 
     .status {
         display: inline-block;
-        padding: 5px 10px;
+        padding: 4px 10px;
+        border: 1px solid transparent;
         border-radius: 20px;
         font-size: 12px;
         font-weight: 600;
     }
 
     .status.ready {
-        background-color: #dcfce7;
-        color: #166534;
+        background-color: rgba(22, 101, 52, 0.2);
+        border-color: rgba(74, 222, 128, 0.4);
+        color: #4ade80;
     }
 
     .status.incomplete {
-        background-color: #fef3c7;
-        color: #92400e;
+        background-color: rgba(120, 53, 15, 0.25);
+        border-color: rgba(251, 191, 36, 0.4);
+        color: #fbbf24;
     }
 
     .action-btn {
-        padding: 6px 10px;
-        border: 1px solid #d1d5db;
-        border-radius: 4px;
-        background-color: white;
-        font-size: 12px;
+        padding: 4px 12px;
+        border: 1px solid #374151;
+        border-radius: 6px;
+        background-color: #111827;
+        color: #d1d5db;
+        font-size: 13px;
+        font-family: inherit;
         cursor: pointer;
     }
 
     .action-btn:hover {
-        background-color: #f3f4f6;
+        border-color: rgba(20, 184, 166, 0.45);
+        color: #5eead4;
     }
 
     .action-btn.delete {
-        color: #b91c1c;
+        color: #f87171;
         margin-left: 5px;
+    }
+
+    .action-btn.delete:hover {
+        background-color: rgba(248, 113, 113, 0.12);
+        border-color: rgba(248, 113, 113, 0.45);
+        color: #f87171;
     }
 
     @media (max-width: 800px) {
@@ -322,7 +414,7 @@
       <h2>Upload Data</h2>
     </div>
 
-    <form action="/upload" method="POST" enctype="multipart/form-data">
+    <form action="/upload" method="POST" enctype="multipart/form-data" novalidate onsubmit="submitDataset(event)">
       <div class="upload-layout">
 
         <!-- Dataset Name -->
@@ -334,8 +426,12 @@
             name="folderName"
             class="dataset-name-input"
             placeholder="e.g. Acacia Dataset"
+            maxlength="64"
+            autocomplete="off"
+            oninput="validateDatasetName()"
             required
           >
+          <span id="folderNameError" class="field-error"></span>
         </div>
 
         <!-- Images -->
@@ -367,8 +463,9 @@
       </div>
 
       <div class="upload-actions">
-        <button type="submit" class="upload-btn">Upload Data</button>
+        <button type="submit" id="uploadDataBtn" class="upload-btn">Upload Data</button>
       </div>
+      <div id="uploadMessage" class="upload-message"></div>
     </form>
   </section>
 
@@ -378,7 +475,7 @@
       <div class="section-header">
         <h2>Dataset</h2>
       </div>
-      <div class="dataset-count">3 Images</div>
+      <div class="dataset-count" id="datasetCount">0 Datasets</div>
     </div>
 
     <div class="table-container">

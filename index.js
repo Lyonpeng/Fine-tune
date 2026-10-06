@@ -3,7 +3,7 @@ const app = express();
 const port = 5000;
 const path = require('path');
 const { spawn } = require("child_process");
-const { createRun, saveRun, readHistory } = require('./training/history');
+const { createRun, saveRun, readHistory, isValidRunName, runNameExists } = require('./training/history');
 const { readModels } = require('./training/models');
 const trainingRoot = path.join(__dirname, 'outputs', 'training');
 app.use(express.json());
@@ -161,6 +161,9 @@ const multer = require("multer");
 const fs = require("fs");
 const ApiError = require("./public/utils/APIError");
 const { StatusCodes } = require("http-status-codes");
+const { isValidName, folderNameExists } = require("./utils/names");
+const INVALID_NAME_MESSAGE = label =>
+  `${label} must start with a letter or number and use only letters, numbers, spaces, '-', '_' or '.' (max 64 characters).`;
 
 const uploadFiles = (
   main_folder_name,
@@ -169,18 +172,24 @@ const uploadFiles = (
 ) => {
   const MAIN_UPLOAD_FOLDER = path.join(__dirname, "public", main_folder_name);
 
-  const createFolderIfNotExist = (folderPath) => {
-    if (!fs.existsSync(folderPath)) {
-      fs.mkdirSync(folderPath, { recursive: true });
-    }
-  };
-
   const storage = multer.diskStorage({
     destination: (req, file, cb) => {
+      // every file of the request goes into the folder claimed for the first one
+      if (req.datasetFolder) {
+        return cb(null, req.datasetFolder);
+      }
+
       const subFolderName = req.body.folderName;
-      if (typeof subFolderName !== 'string' || !subFolderName.trim()
-          || subFolderName === '.' || subFolderName === '..' || /[\\/:]/.test(subFolderName)) {
-        return cb(new ApiError(StatusCodes.BAD_REQUEST, 'Invalid dataset name'));
+      if (!isValidName(subFolderName)) {
+        return cb(new ApiError(StatusCodes.BAD_REQUEST, INVALID_NAME_MESSAGE("Dataset name")));
+      }
+
+      const duplicate = new ApiError(
+        StatusCodes.CONFLICT,
+        `Dataset name "${subFolderName}" is already used. Please choose another name.`
+      );
+      if (folderNameExists(MAIN_UPLOAD_FOLDER, subFolderName)) {
+        return cb(duplicate);
       }
 
       const folderPath = path.join(
@@ -188,7 +197,15 @@ const uploadFiles = (
         subFolderName
       );
 
-      createFolderIfNotExist(folderPath);
+      try {
+        fs.mkdirSync(MAIN_UPLOAD_FOLDER, { recursive: true });
+        // non-recursive: throws EEXIST if another upload claimed the name first
+        fs.mkdirSync(folderPath);
+      } catch (error) {
+        return cb(error.code === 'EEXIST' ? duplicate : error);
+      }
+
+      req.datasetFolder = folderPath;
       cb(null, folderPath);
     },
 
@@ -217,11 +234,22 @@ const uploadFiles = (
   });
 };
 
-app.post("/upload",
-  uploadFiles("uploads", 2000000000000, ["image/png", "image/jpg", "image/jpeg", "application/json"]).fields([
+const datasetUpload = uploadFiles("uploads", 2000000000000, ["image/png", "image/jpg", "image/jpeg", "application/json"]).fields([
     { name: "images", maxCount: 1000 },
-    { name: "associatedData", maxCount: 1 }]),
+    { name: "associatedData", maxCount: 1 }]);
+
+app.post("/upload",
+  // report upload errors (bad/duplicate name, file type) as JSON for the Data page
+  (req, res, next) => datasetUpload(req, res, error => {
+    if (error) {
+      return res.status(error.statusCode || StatusCodes.BAD_REQUEST).json({ message: error.message });
+    }
+    next();
+  }),
     (req, res) => {
+    if (!req.files?.images?.length) {
+      return res.status(StatusCodes.BAD_REQUEST).json({ message: "Please select at least one image." });
+    }
     console.log(req.files);
 
     res.send({
@@ -314,6 +342,7 @@ app.get("/api/datasets", async (req, res) => {
 
 app.post("/train", (req, res) => {
   const {
+      runName,
       dataset,
       weights,
       learningRate,
@@ -334,6 +363,18 @@ app.post("/train", (req, res) => {
             message: "Invalid training configuration"
         });
     }
+
+    if (!isValidRunName(runName)) {
+        return res.status(400).json({
+            message: INVALID_NAME_MESSAGE("Run name")
+        });
+    }
+
+    if (runNameExists(trainingRoot, trainingJobs, runName)) {
+        return res.status(409).json({
+            message: `Run name "${runName}" is already used. Please choose another name.`
+        });
+    }
 const datasetPath = path.join(
     __dirname,
     "public",
@@ -346,8 +387,18 @@ if (!fs.existsSync(datasetPath)) {
         message: "Selected dataset does not exist"
     });
 }
+    let name, outputDir;
+    try {
+        ({ name, outputDir } = createRun(trainingRoot, runName));
+    } catch (error) {
+        if (error.code === 'EEXIST') {
+            return res.status(409).json({
+                message: `Run name "${runName}" is already used. Please choose another name.`
+            });
+        }
+        throw error;
+    }
     const runId = nextRunId++;
-    const { name, outputDir } = createRun(trainingRoot, dataset);
     const configFile = path.join(__dirname, 'training', 'mask_rcnn_R_50_FPN_1x_test.yaml');
     // Preserve the source configuration even if Python cannot initialize.
     fs.copyFileSync(configFile, path.join(outputDir, 'config.yaml'));

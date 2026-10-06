@@ -1,11 +1,20 @@
 const fs = require('fs');
 const path = require('path');
-const { randomUUID } = require('crypto');
+const { isValidName, folderNameExists } = require('../utils/names');
 
-function createRun(root, dataset) {
-    const name = `${path.basename(dataset)}_${new Date().toISOString().replace(/[:.]/g, '-')}_${randomUUID()}`;
+const isValidRunName = isValidName;
+
+// Case-insensitive, since run names are folder names and Windows folders ignore case.
+function runNameExists(root, liveJobs, name) {
+    const wanted = name.toLowerCase();
+    return liveJobs.some(job => job.name.toLowerCase() === wanted) || folderNameExists(root, name);
+}
+
+function createRun(root, name) {
     const outputDir = path.join(root, name);
-    fs.mkdirSync(outputDir, { recursive: true });
+    fs.mkdirSync(root, { recursive: true });
+    // non-recursive: throws EEXIST if another request claimed the name first
+    fs.mkdirSync(outputDir);
     return { name, outputDir };
 }
 
@@ -59,4 +68,4 @@ function readHistory(root, liveJobs) {
     return [...liveJobs, ...saved].sort((a, b) => b.startTime - a.startTime);
 }
 
-module.exports = { createRun, saveRun, readHistory };
+module.exports = { createRun, saveRun, readHistory, isValidRunName, runNameExists };

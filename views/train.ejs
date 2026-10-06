@@ -8,6 +8,20 @@
 
         <div class="config-grid">
 
+            <div class="form-group full-width">
+                <label for="runName">Run Name</label>
+                <input
+                    type="text"
+                    id="runName"
+                    name="runName"
+                    placeholder="e.g. acacia_maskrcnn_v1"
+                    maxlength="64"
+                    autocomplete="off"
+                    oninput="validateRunName()"
+                >
+                <span id="runNameError" class="field-error"></span>
+            </div>
+
             <div class="form-group">
                 <label for="model">Model</label>
                 <select id="model" name="model">
@@ -125,9 +139,9 @@
     /* Sections */
 
     .train-section {
-        background-color: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
+        background: rgba(17, 24, 39, 0.55);
+        border: 1px solid rgba(31, 41, 55, 0.7);
+        border-radius: 12px;
         padding: 25px;
         margin-bottom: 25px;
     }
@@ -138,12 +152,12 @@
 
     .section-header h2 {
         font-size: 20px;
-        color: #111827;
+        color: #e5e7eb;
         margin-bottom: 6px;
     }
 
     .section-header p {
-        color: #6b7280;
+        color: #9ca3af;
         font-size: 14px;
     }
 
@@ -162,27 +176,54 @@
     }
 
     .form-group label {
-        font-size: 14px;
+        font-size: .8rem;
         font-weight: 600;
-        color: #374151;
-        margin-bottom: 8px;
+        letter-spacing: .05em;
+        color: #e5e7eb;
+        margin-bottom: 6px;
     }
 
     .form-group input,
     .form-group select {
         padding: 10px 12px;
 
-        border: 1px solid #d1d5db;
-        border-radius: 5px;
+        border: 1px solid #374151;
+        border-radius: 6px;
 
         font-size: 14px;
-        background-color: white;
+        font-family: inherit;
+        background: rgba(3, 7, 18, 0.5);
+        color: #e5e7eb;
+    }
+
+    .form-group select option {
+        background-color: #111827;
+        color: #e5e7eb;
     }
 
     .form-group input:focus,
     .form-group select:focus {
         outline: none;
-        border-color: #4b5563;
+        border-color: #14b8a6;
+    }
+
+    .form-group.full-width {
+        grid-column: 1 / -1;
+    }
+
+    .form-group input.invalid {
+        border-color: rgba(248, 113, 113, 0.6);
+    }
+
+    .field-error {
+        display: none;
+        margin-top: 6px;
+        color: #f87171;
+        font-size: 13px;
+    }
+
+    .field-error:not(:empty) {
+        display: block;
     }
 
 
@@ -195,22 +236,23 @@
     }
 
     .run-training-btn {
-        background-color: #1f2937;
-        color: white;
+        background: linear-gradient(to top, #0d9488, #14b8a6);
+        color: #fff;
 
         border: none;
-        border-radius: 5px;
+        border-radius: 6px;
 
-        padding: 11px 22px;
+        padding: 10px 24px;
 
         font-size: 14px;
         font-weight: 600;
+        font-family: inherit;
 
         cursor: pointer;
     }
 
     .run-training-btn:hover {
-        background-color: #374151;
+        background: linear-gradient(to top, #0f766e, #0d9488);
     }
 
 
@@ -227,20 +269,33 @@
 
     .runtime-table th,
     .runtime-table td {
-        padding: 12px 15px;
+        padding: 12px 10px;
         text-align: left;
-        border-bottom: 1px solid #e5e7eb;
+        border-bottom: 1px solid rgba(31, 41, 55, 0.5);
         font-size: 14px;
     }
 
     .runtime-table th {
-        color: #374151;
-        background-color: #f9fafb;
+        font-size: .72rem;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        color: #9ca3af;
+        border-bottom-color: #1f2937;
         font-weight: 600;
+        vertical-align: bottom;
     }
 
     .runtime-table td {
-        color: #4b5563;
+        color: #d1d5db;
+    }
+
+    .runtime-table td a {
+        color: #5eead4;
+        text-decoration: none;
+    }
+
+    .runtime-table td a:hover {
+        text-decoration: underline;
     }
 
 
@@ -248,38 +303,47 @@
 
     .status {
         display: inline-block;
-        padding: 5px 10px;
+        padding: 4px 10px;
+        border: 1px solid transparent;
         border-radius: 20px;
         font-size: 12px;
         font-weight: 600;
     }
 
     .status.completed {
-        background-color: #dcfce7;
-        color: #166534;
+        background-color: rgba(22, 101, 52, 0.2);
+        border-color: rgba(74, 222, 128, 0.4);
+        color: #4ade80;
     }
 
     .status.running {
-        background-color: #dbeafe;
-        color: #1d4ed8;
+        background-color: rgba(20, 184, 166, 0.12);
+        border-color: rgba(20, 184, 166, 0.45);
+        color: #5eead4;
     }
 
     .status.failed,
     .status.error {
-        background-color: #fee2e2;
-        color: #991b1b;
+        background-color: rgba(127, 29, 29, 0.25);
+        border-color: rgba(248, 113, 113, 0.4);
+        color: #f87171;
     }
     .advanced-config {
         margin-top: 25px;
-        border-top: 1px solid #e5e7eb;
+        border-top: 1px solid rgba(31, 41, 55, 0.7);
         padding-top: 20px;
     }
 
     .advanced-config summary {
         font-size: 15px;
         font-weight: 600;
-        color: #374151;
+        color: #d1d5db;
         cursor: pointer;
+    }
+
+    .advanced-config summary:hover,
+    .advanced-config[open] summary {
+        color: #5eead4;
     }
 
     .advanced-content {
@@ -288,7 +352,7 @@
 
     .advanced-content p {
         font-size: 13px;
-        color: #6b7280;
+        color: #9ca3af;
         margin-bottom: 10px;
     }
 
@@ -296,17 +360,23 @@
         width: 100%;
         min-height: 220px;
         padding: 15px;
-        border: 1px solid #d1d5db;
-        border-radius: 5px;
+        border: 1px solid #374151;
+        border-radius: 6px;
+        background: rgba(3, 7, 18, 0.5);
+        color: #e5e7eb;
         font-family: monospace;
         font-size: 13px;
         line-height: 1.5;
         resize: vertical;
     }
 
+    .config-editor::placeholder {
+        color: #6b7280;
+    }
+
     .config-editor:focus {
         outline: none;
-        border-color: #4b5563;
+        border-color: #14b8a6;
     }
 
     /* Smaller screens */
@@ -316,34 +386,72 @@
             grid-template-columns: 1fr;
         }
     }
-    .stop-training-btn {
-        padding: 6px 12px;
-        border: none;
-        border-radius: 5px;
-        background-color: #dc2626;
-        color: white;
-        font-size: 12px;
-        font-weight: 600;
-        cursor: pointer;
+    /* long run names wrap so the Action column stays inside the card */
+    .runtime-table td:first-child {
+        min-width: 140px;
+        overflow-wrap: anywhere;
     }
 
-    .stop-training-btn:hover {
-        background-color: #b91c1c;
+    .runtime-table td:nth-child(3),
+    .runtime-table td:last-child {
+        white-space: nowrap;
+    }
+
+    /* View + Stop: same button, side by side (like View/Delete on the Data page) */
+    .history-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .runtime-table .history-btn {
+        display: inline-block;
+        padding: 4px 12px;
+        border: 1px solid #374151;
+        border-radius: 6px;
+        background-color: #111827;
+        color: #d1d5db;
+        font-size: 13px;
+        font-family: inherit;
+        line-height: normal;
+        text-decoration: none;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: all .15s;
+    }
+
+    .runtime-table .history-btn:hover {
+        border-color: rgba(20, 184, 166, 0.45);
+        color: #5eead4;
+        text-decoration: none;
+    }
+
+    .runtime-table .stop-training-btn {
+        color: #f87171;
+    }
+
+    .runtime-table .stop-training-btn:hover {
+        background-color: rgba(248, 113, 113, 0.12);
+        border-color: rgba(248, 113, 113, 0.45);
+        color: #f87171;
     }
 
     .status.stopping {
-        background-color: #fef3c7;
-        color: #92400e;
+        background-color: rgba(120, 53, 15, 0.25);
+        border-color: rgba(251, 191, 36, 0.4);
+        color: #fbbf24;
     }
 
     .status.error {
-        background-color: #fee2e2;
-        color: #991b1b;
+        background-color: rgba(127, 29, 29, 0.25);
+        border-color: rgba(248, 113, 113, 0.4);
+        color: #f87171;
     }
 
 
     .status.stopped {
-        background-color: #f3f4f6;
-        color: #4b5563;
+        background-color: rgba(31, 41, 55, 0.6);
+        border-color: #374151;
+        color: #9ca3af;
     }
 </style>

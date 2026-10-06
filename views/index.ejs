@@ -6,7 +6,16 @@
 
     <title>Home</title>
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
+        /* IADA dashboard theme (dark gray-950 + teal), matching AcaciaGeolocation */
+        :root {
+            color-scheme: dark;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -14,75 +23,133 @@
         }
 
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f6f8;
+            font-family: 'Inter', 'Segoe UI', system-ui, Arial, sans-serif;
+            background-color: #030712;
+            color: #e5e7eb;
+        }
+
+        /* faint teal wash at the top */
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            pointer-events: none;
+            background: radial-gradient(120% 90% at 50% -10%, rgba(20, 184, 166, 0.08), rgba(3, 7, 18, 0) 55%);
+        }
+
+        a {
+            color: #5eead4;
+        }
+
+        /* Top bar (56px IADA bar, as in AcaciaGeolocation) */
+        #hdr {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+
+            height: 56px;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+
+            background: rgba(3, 7, 18, 0.85);
+            border-bottom: 1px solid rgba(31, 41, 55, 0.7);
+            backdrop-filter: blur(12px);
+        }
+
+        #hdr a {
+            display: flex;
+            align-items: center;
+        }
+
+        #hdr img {
+            height: 28px;
+            width: auto;
         }
 
         /* Sidebar */
         .sidebar {
             position: fixed;
-            top: 0;
+            top: 56px;
             left: 0;
 
             width: 220px;
-            height: 100vh;
+            height: calc(100vh - 56px);
 
-            background-color: #1f2937;
-            padding-top: 30px;
+            background: rgba(3, 7, 18, 0.85);
+            border-right: 1px solid rgba(31, 41, 55, 0.7);
+            backdrop-filter: blur(12px);
+            padding-top: 24px;
         }
 
         .sidebar h2 {
-            color: white;
-            text-align: center;
-            margin-bottom: 30px;
+            color: #e5e7eb;
+            font-size: 1.1rem;
+            font-weight: 600;
+            padding: 0 24px;
+            margin-bottom: 24px;
         }
 
         .sidebar a {
             display: block;
 
-            padding: 15px 25px;
+            padding: 12px 24px;
 
-            color: #d1d5db;
+            color: #9ca3af;
             text-decoration: none;
-            font-size: 16px;
+            font-size: 15px;
+            border-left: 2px solid transparent;
+            transition: all .15s;
         }
 
         .sidebar a:hover {
-            background-color: #374151;
-            color: white;
+            background-color: rgba(31, 41, 55, 0.5);
+            color: #5eead4;
         }
 
         /* Current page */
         .sidebar a.active {
-            background-color: #4b5563;
-            color: white;
+            background-color: rgba(20, 184, 166, 0.08);
+            border-left-color: #14b8a6;
+            color: #5eead4;
+            font-weight: 600;
         }
 
         /* Main content */
         .main-content {
             margin-left: 220px;
-            padding: 40px;
+            padding: 96px 40px 40px;   /* 56px top bar + 40px */
         }
 
         .main-content h1 {
             margin-bottom: 10px;
+            color: #e5e7eb;
         }
 
         .main-content p {
-            color: #555;
+            color: #9ca3af;
         }
     </style>
 </head>
 
 <body>
 
+    <!-- Top bar -->
+    <div id="hdr">
+        <a href="http://10.1.7.26:8083/">
+            <img src="/iada-logo-onbg.png" alt="IADA">
+        </a>
+    </div>
+
     <!-- Sidebar -->
     <div class="sidebar">
-        <h2>Dashboard</h2>
-        <a href="#" class="active" onclick="loadPage('home'); return false;">Home</a>
-        <a href="#" onclick="loadPage('data'); return false;">Data</a>
-        <a href="#" onclick="loadPage('train'); return false;">Train</a>
-        <a href="#" onclick="loadPage('model'); return false;">Model</a>
+        <a href="#" class="active" data-page="home" onclick="loadPage('home'); return false;">Home</a>
+        <a href="#" data-page="data" onclick="loadPage('data'); return false;">Data</a>
+        <a href="#" data-page="train" onclick="loadPage('train'); return false;">Train</a>
+        <a href="#" data-page="model" onclick="loadPage('model'); return false;">Model</a>
     </div>
 
 
@@ -100,6 +167,11 @@
     <script>
 
         async function loadPage(page) {
+            // highlight the sidebar link of the page being shown
+            document.querySelectorAll(".sidebar a").forEach(link => {
+                link.classList.toggle("active", link.dataset.page === page);
+            });
+
             const response = await fetch(`/pages/${page}`);
             const html = await response.text();
 
@@ -163,9 +235,15 @@
                 }
 
                 const datasets = await response.json();
+                knownDatasetNames = datasets.map(dataset => dataset.name);
                 const table = document.getElementById("datasetTable");
 
                 if (!table) return;
+
+                const count = document.getElementById("datasetCount");
+                if (count) {
+                    count.textContent = `${datasets.length} ${datasets.length === 1 ? "Dataset" : "Datasets"}`;
+                }
 
                 table.innerHTML = "";
 
@@ -214,8 +292,112 @@
                 alert(error.message);
             }
         }
+        // names already taken, refreshed by loadTrainingHistory() / loadDatasets()
+        let knownRunNames = [];
+        let knownDatasetNames = [];
+
+        // must match isValidName() in utils/names.js
+        const NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9 _.-]{0,63}$/;
+
+        // Shows the problem under a name box; returns true when the name is usable.
+        function validateNameField(inputId, errorId, label, takenNames) {
+            const input = document.getElementById(inputId);
+            const error = document.getElementById(errorId);
+            if (!input || !error) return false;
+
+            const name = input.value.trim();
+            let message = "";
+
+            if (!name) {
+                message = `Please enter a ${label.toLowerCase()}.`;
+            } else if (!NAME_PATTERN.test(name) || /[ .]$/.test(name)) {
+                message = "Use letters, numbers, spaces, '-', '_' or '.', starting with a letter or number.";
+            } else if (takenNames.some(existing => existing.toLowerCase() === name.toLowerCase())) {
+                message = `${label} "${name}" is already used. Please choose another name.`;
+            }
+
+            error.textContent = message;
+            input.classList.toggle("invalid", message !== "");
+            return message === "";
+        }
+
+        function validateRunName() {
+            return validateNameField("runName", "runNameError", "Run name", knownRunNames);
+        }
+
+        function validateDatasetName() {
+            return validateNameField("folderName", "folderNameError", "Dataset name", knownDatasetNames);
+        }
+
+        function showUploadMessage(message, type) {
+            const box = document.getElementById("uploadMessage");
+            if (!box) return;
+            box.textContent = message;
+            box.className = `upload-message ${type}`;
+        }
+
+        async function submitDataset(event) {
+            event.preventDefault();
+            const form = event.target;
+            const nameInput = document.getElementById("folderName");
+            const images = document.getElementById("images");
+            const button = document.getElementById("uploadDataBtn");
+
+            showUploadMessage("", "");
+            nameInput.value = nameInput.value.trim();
+            if (!validateDatasetName()) {
+                nameInput.focus();
+                return;
+            }
+            if (images.files.length === 0) {
+                showUploadMessage("Please select at least one image.", "error");
+                return;
+            }
+
+            const name = nameInput.value;
+            button.disabled = true;
+            button.textContent = "Uploading...";
+
+            try {
+                const response = await fetch("/upload", {
+                    method: "POST",
+                    body: new FormData(form)
+                });
+                const result = await response.json();
+
+                if (response.status === 409) {
+                    // name was taken since the dataset list was loaded
+                    knownDatasetNames.push(name);
+                    validateDatasetName();
+                    return;
+                }
+                if (!response.ok) {
+                    throw new Error(result.message || "Upload failed");
+                }
+
+                const imageCount = images.files.length;
+                form.reset();
+                document.getElementById("imagePreviewContainer").innerHTML = "";
+                document.getElementById("imageUploadLabel").style.display = "flex";
+                document.getElementById("annotationFileName").textContent = "";
+                showUploadMessage(`Dataset "${name}" uploaded (${imageCount} images).`, "success");
+                loadDatasets();
+            } catch (error) {
+                console.error("Upload error:", error);
+                showUploadMessage(error.message, "error");
+            } finally {
+                button.disabled = false;
+                button.textContent = "Upload Data";
+            }
+        }
+
         async function startTraining() {
+            if (!validateRunName()) {
+                document.getElementById("runName").focus();
+                return;
+            }
             const settings = {
+                runName: document.getElementById("runName").value.trim(),
                 dataset: document.getElementById("dataset").value,
                 weights: document.getElementById("weights").value,
                 learningRate: Number(document.getElementById("learningRate").value),
@@ -238,10 +420,19 @@
 
                 const result = await response.json();
 
+                if (response.status === 409) {
+                    // name was taken since the last history refresh
+                    knownRunNames.push(settings.runName);
+                    validateRunName();
+                    return;
+                }
+
                 if (!response.ok) {
                     throw new Error(result.message || "Failed to start training");
                 }
 
+                knownRunNames.push(settings.runName);
+                document.getElementById("runName").value = "";
                 loadTrainingHistory();
             } catch (error) {
                 console.error("Training error:", error);
@@ -261,6 +452,7 @@
         }
 
         const jobs = await response.json();
+        knownRunNames = jobs.map(job => job.name);
 
         if (jobs.length === 0) {
             table.innerHTML = `
@@ -290,10 +482,12 @@
                 </td>
                 <td>${job.runtime == null ? '-' : formatRuntime(job.runtime)}</td>
                 <td>
-                    ${job.status === "Running"
-                        ? `<button class="stop-training-btn" onclick="stopTraining(${job.id})">Stop</button>`
-                        : ""
-                    }
+                    <div class="history-actions">
+                        ${job.status === "Running"
+                            ? `<button class="history-btn stop-training-btn" onclick="stopTraining(${job.id})">Stop</button>`
+                            : ""
+                        }
+                    </div>
                 </td>
             `;
             row.cells[0].textContent = job.name || `#${String(job.id).padStart(3, "0")}`;
