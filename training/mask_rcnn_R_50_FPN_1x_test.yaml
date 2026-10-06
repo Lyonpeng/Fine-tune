@@ -1,0 +1,34 @@
+_BASE_: "Base-RCNN-FPN.yaml"
+
+MODEL:
+  WEIGHTS: "detectron2://ImageNetPretrained/MSRA/R-50.pkl"
+
+  MASK_ON: True
+
+  RESNETS:
+    DEPTH: 50
+
+  ROI_HEADS:
+    NUM_CLASSES: 1
+
+
+DATASETS:
+  TRAIN: ("acacia_train",)
+  # TRAIN: (,)
+  TEST: ("acacia_test",)
+
+
+SOLVER:
+  IMS_PER_BATCH: 1
+  BASE_LR: 0.00025
+  MAX_ITER: 200
+
+
+INPUT:
+  MIN_SIZE_TRAIN: (640, 672, 704, 736, 768, 800)
+  MASK_FORMAT: "polygon"
+  MIN_SIZE_TEST: 640
+  MAX_SIZE_TEST: 800
+OUTPUT_DIR: "outputs/training"
+
+VERSION: 2

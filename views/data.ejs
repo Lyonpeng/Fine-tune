@@ -1,0 +1,440 @@
+<style>
+    .data-page {
+        max-width: 1200px;
+    }
+
+    .data-section {
+        background-color: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 25px;
+        margin-bottom: 25px;
+    }
+
+    .section-header {
+        margin-bottom: 25px;
+    }
+
+    .section-header h2 {
+        font-size: 20px;
+        color: #111827;
+        margin-bottom: 6px;
+    }
+
+    .section-header p {
+        color: #6b7280;
+        font-size: 14px;
+    }
+
+    .upload-layout {
+        display: flex;
+        flex-direction: column;
+        gap: 25px;
+    }
+
+    .image-upload-section h3 {
+        color: #111827;
+        margin-bottom: 6px;
+    }
+
+    .image-upload-section > p {
+        color: #6b7280;
+        font-size: 13px;
+        margin-bottom: 15px;
+    }
+
+    .upload-box {
+        border: 2px dashed #d1d5db;
+        border-radius: 8px;
+        padding: 25px;
+        background-color: #f9fafb;
+    }
+
+    .upload-box:hover {
+        border-color: #9ca3af;
+    }
+
+    .upload-box input[type="file"] {
+        display: none;
+    }
+
+    .image-upload-label {
+        min-height: 130px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+    .image-upload-label:hover {
+        background-color: #f3f4f6;
+    }
+
+    .upload-icon {
+        font-size: 32px;
+        color: #6b7280;
+        margin-bottom: 10px;
+    }
+
+    .image-upload-label strong {
+        color: #374151;
+        margin-bottom: 6px;
+    }
+
+    .image-upload-label span {
+        color: #9ca3af;
+        font-size: 12px;
+    }
+
+    .image-preview-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 15px;
+        margin-top: 20px;
+    }
+
+    .preview-item {
+        background-color: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+    .preview-item img {
+        display: block;
+        width: 100%;
+        height: 100px;
+        object-fit: cover;
+    }
+
+    .preview-name {
+        padding: 8px;
+        color: #4b5563;
+        font-size: 11px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .annotation-section {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 18px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        background-color: #f9fafb;
+    }
+    .annotation-file-control {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+    }
+    .annotation-info {
+        flex: 1;
+    }
+
+    .annotation-info h3 {
+        color: #111827;
+        margin-bottom: 5px;
+        font-size: 15px;
+    }
+
+    .annotation-info p {
+        color: #6b7280;
+        font-size: 13px;
+    }
+
+    .annotation-section input[type="file"] {
+        display: none;
+    }
+
+    .file-button {
+        padding: 9px 15px;
+        background-color: #e5e7eb;
+        border-radius: 5px;
+        color: #374151;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+
+    .file-button:hover {
+        background-color: #d1d5db;
+    }
+
+    .annotation-file-name {
+        color: #6b7280;
+        font-size: 12px;
+        max-width: 200px;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
+
+    .upload-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 25px;
+    }
+
+    .upload-btn {
+        padding: 11px 22px;
+        border: none;
+        border-radius: 5px;
+        background-color: #1f2937;
+        color: white;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .upload-btn:hover {
+        background-color: #374151;
+    }
+
+    .dataset-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+    }
+
+    .dataset-count {
+        padding: 6px 12px;
+        background-color: #f3f4f6;
+        border-radius: 20px;
+        color: #4b5563;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .table-container {
+        overflow-x: auto;
+    }
+
+    .dataset-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .dataset-table th,
+    .dataset-table td {
+        padding: 12px 15px;
+        text-align: left;
+        vertical-align: middle;
+        border-bottom: 1px solid #e5e7eb;
+        font-size: 14px;
+    }
+
+    .dataset-table th {
+        background-color: #f9fafb;
+        color: #374151;
+        font-weight: 600;
+    }
+
+    .dataset-table td {
+        color: #4b5563;
+    }
+
+    .dataset-image-preview {
+        width: 60px;
+        height: 45px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: #e5e7eb;
+        border-radius: 5px;
+        color: #6b7280;
+        font-size: 10px;
+    }
+
+    .file-info {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .file-info strong {
+        color: #374151;
+        font-size: 13px;
+    }
+
+    .file-info span {
+        color: #9ca3af;
+        font-size: 11px;
+    }
+
+    .status {
+        display: inline-block;
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .status.ready {
+        background-color: #dcfce7;
+        color: #166534;
+    }
+
+    .status.incomplete {
+        background-color: #fef3c7;
+        color: #92400e;
+    }
+
+    .action-btn {
+        padding: 6px 10px;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        background-color: white;
+        font-size: 12px;
+        cursor: pointer;
+    }
+
+    .action-btn:hover {
+        background-color: #f3f4f6;
+    }
+
+    .action-btn.delete {
+        color: #b91c1c;
+        margin-left: 5px;
+    }
+
+    @media (max-width: 800px) {
+        .annotation-section {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .annotation-file-name {
+            max-width: 100%;
+        }
+    }
+</style>
+<div class="data-page">
+  <!-- Upload Data -->
+  <section class="data-section">
+    <div class="section-header">
+      <h2>Upload Data</h2>
+    </div>
+
+    <form action="/upload" method="POST" enctype="multipart/form-data">
+      <div class="upload-layout">
+
+        <!-- Dataset Name -->
+        <div class="dataset-name-section">
+          <h3>Dataset Name</h3>
+          <input
+            type="text"
+            id="folderName"
+            name="folderName"
+            class="dataset-name-input"
+            placeholder="e.g. Acacia Dataset"
+            required
+          >
+        </div>
+
+        <!-- Images -->
+        <div class="image-upload-section">
+          <h3>Images</h3>
+
+          <div class="upload-box">
+            <input type="file" id="images" name="images" accept=".jpg,.jpeg,.png" multiple required onchange="previewImages(event)">
+            <label for="images" id="imageUploadLabel" class="image-upload-label">
+                <div class="upload-icon">▧</div>
+                <strong>Select Images</strong>
+                <span>JPG, JPEG or PNG</span>
+            </label>
+
+            <div id="imagePreviewContainer" class="image-preview-grid"></div>
+            </div>
+        </div>
+        <!-- Annotation -->
+        <div class="annotation-section">
+          <div class="annotation-info">
+            <h3>Annotation File</h3>
+          </div>
+          <div class="annotation-file-control">
+            <input type="file" id="associatedData" name="associatedData" accept=".json" onchange="showAnnotationFile(event)">
+            <label for="associatedData" class="file-button">Select File</label>
+            <span id="annotationFileName" class="annotation-file-name"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="upload-actions">
+        <button type="submit" class="upload-btn">Upload Data</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- Dataset -->
+  <section class="data-section">
+    <div class="dataset-header">
+      <div class="section-header">
+        <h2>Dataset</h2>
+      </div>
+      <div class="dataset-count">3 Images</div>
+    </div>
+
+    <div class="table-container">
+      <table class="dataset-table">
+        <thead>
+          <tr>
+            <th>Dataset</th>
+            <th>Images</th>
+            <th>Annotation</th>
+            <th>Created</th>
+            <th>Size</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="datasetTable"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script>
+
+document.getElementById("uploadForm").addEventListener("submit", async function(event) {
+  event.preventDefault();
+
+  const imageInput = document.getElementById("images");
+
+  if (imageInput.files.length === 0) {
+    alert("Please select at least one image.");
+    return;
+  }
+
+  const formData = new FormData();
+
+  for (const file of imageInput.files) {
+    formData.append("images", file);
+  }
+
+  try {
+    const response = await fetch("/upload", {
+      method: "POST",
+      body: formData
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || "Upload failed");
+    }
+
+    alert("Images uploaded successfully!");
+    document.getElementById("uploadForm").reset();
+    document.getElementById("annotationFileName").textContent = "No file selected";
+  } catch (error) {
+    console.error(error);
+    alert(error.message);
+  }
+});
+</script>

@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Home</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f8;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+
+            width: 220px;
+            height: 100vh;
+
+            background-color: #1f2937;
+            padding-top: 30px;
+        }
+
+        .sidebar h2 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .sidebar a {
+            display: block;
+
+            padding: 15px 25px;
+
+            color: #d1d5db;
+            text-decoration: none;
+            font-size: 16px;
+        }
+
+        .sidebar a:hover {
+            background-color: #374151;
+            color: white;
+        }
+
+        /* Current page */
+        .sidebar a.active {
+            background-color: #4b5563;
+            color: white;
+        }
+
+        /* Main content */
+        .main-content {
+            margin-left: 220px;
+            padding: 40px;
+        }
+
+        .main-content h1 {
+            margin-bottom: 10px;
+        }
+
+        .main-content p {
+            color: #555;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h2>Dashboard</h2>
+        <a href="#" class="active" onclick="loadPage('home'); return false;">Home</a>
+        <a href="#" onclick="loadPage('data'); return false;">Data</a>
+        <a href="#" onclick="loadPage('train'); return false;">Train</a>
+        <a href="#" onclick="loadPage('model'); return false;">Model</a>
+    </div>
+
+
+    <!-- Main page -->
+    <main class="main-content">
+
+        <h1>Home</h1>
+
+        <p>
+            Welcome to the application.
+            Use the sidebar to navigate between the different sections.
+        </p>
+
+    </main>
+    <script>
+
+        async function loadPage(page) {
+            const response = await fetch(`/pages/${page}`);
+            const html = await response.text();
+
+            document.querySelector(".main-content").innerHTML = html;
+
+            if (page === "data") {
+                loadDatasets();
+            }
+
+            if (page === "train") {
+                loadTrainingDatasets();
+                loadTrainingHistory();
+            }
+        }
+        setInterval(() => {
+            if (document.getElementById("runtimeHistory")) {
+                loadTrainingHistory();
+            }
+        }, 1000);
+        function previewImages(event) {
+            const files = event.target.files;
+            const container = document.getElementById("imagePreviewContainer");
+            const uploadLabel = document.getElementById("imageUploadLabel");
+
+            container.innerHTML = "";
+
+            if (files.length === 0) {
+                uploadLabel.style.display = "flex";
+                return;
+            }
+
+            uploadLabel.style.display = "none";
+
+            for (const file of files) {
+                const previewItem = document.createElement("div");
+                previewItem.className = "preview-item";
+
+                const img = document.createElement("img");
+                img.src = URL.createObjectURL(file);
+
+                const fileName = document.createElement("div");
+                fileName.className = "preview-name";
+                fileName.textContent = file.name;
+
+                previewItem.appendChild(img);
+                previewItem.appendChild(fileName);
+                container.appendChild(previewItem);
+            }
+        }
+        function showAnnotationFile(event) {
+            const file = event.target.files[0];
+            const fileName = document.getElementById("annotationFileName");
+            fileName.textContent = file ? file.name : "";
+        }
+        async function loadDatasets() {
+            try {
+                const response = await fetch("/api/datasets");
+
+                if (!response.ok) {
+                throw new Error("Failed to retrieve datasets");
+                }
+
+                const datasets = await response.json();
+                const table = document.getElementById("datasetTable");
+
+                if (!table) return;
+
+                table.innerHTML = "";
+
+                datasets.forEach(dataset => {
+                const row = document.createElement("tr");
+
+                row.innerHTML = `
+                    <td><strong>${dataset.name}</strong></td>
+                    <td>${dataset.imageCount}</td>
+                    <td>${dataset.annotation || "None"}</td>
+                    <td>${new Date(dataset.created).toLocaleString()}</td>
+                    <td>${formatSize(dataset.size)}</td>
+                    <td>
+                    <button class="action-btn">View</button>
+                    <button class="action-btn delete" onclick="deleteDataset('${dataset.name}')">Delete</button>
+                    </td>
+                `;
+
+                table.appendChild(row);
+                });
+            } catch (error) {
+                console.error("Dataset loading error:", error);
+            }
+        }
+
+        function formatSize(bytes) {
+            if (bytes === 0) return "0 MB";
+            if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`;
+            if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+            return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
+        }
+        async function deleteDataset(folderName) {
+            const confirmed = confirm(`Delete dataset "${folderName}"?`);
+            if (!confirmed) return;
+            try {
+                const response = await fetch(`/api/datasets/${encodeURIComponent(folderName)}`, {
+                    method: "DELETE"
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.message || "Failed to delete dataset");
+                }
+                loadDatasets();
+            } catch (error) {
+                console.error(error);
+                alert(error.message);
+            }
+        }
+        async function startTraining() {
+            const settings = {
+                dataset: document.getElementById("dataset").value,
+                weights: document.getElementById("weights").value,
+                learningRate: Number(document.getElementById("learningRate").value),
+                batchSize: Number(document.getElementById("batchSize").value),
+                maxIterations: Number(document.getElementById("maxIterations").value),
+                advancedConfig: document.getElementById("advancedConfig").value
+            };
+            if (!settings.dataset) {
+                alert("Please select a dataset.");
+                return;
+            }
+            try {
+                const response = await fetch("/train", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(settings)
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.message || "Failed to start training");
+                }
+
+                loadTrainingHistory();
+            } catch (error) {
+                console.error("Training error:", error);
+                alert(error.message);
+            }
+        }
+        async function loadTrainingHistory() {
+    const table = document.getElementById("runtimeHistory");
+
+    if (!table) return;
+
+    try {
+        const response = await fetch("/api/training");
+
+        if (!response.ok) {
+            throw new Error("Failed to retrieve training history");
+        }
+
+        const jobs = await response.json();
+
+        if (jobs.length === 0) {
+            table.innerHTML = `
+                <tr>
+                    <td colspan="9">No training runs.</td>
+                </tr>
+            `;
+            return;
+        }
+
+        table.innerHTML = "";
+
+        jobs.forEach(job => {
+            const row = document.createElement("tr");
+
+            row.innerHTML = `
+                <td></td>
+                <td>${job.dataset}</td>
+                <td>${job.model}</td>
+                <td>${job.learningRate ?? '-'}</td>
+                <td>${job.batchSize ?? '-'}</td>
+                <td>${job.maxIterations?.toLocaleString() ?? '-'}</td>
+                <td>
+                    <span class="status ${job.status.toLowerCase()}">
+                        ${job.status}
+                    </span>
+                </td>
+                <td>${job.runtime == null ? '-' : formatRuntime(job.runtime)}</td>
+                <td>
+                    ${job.status === "Running"
+                        ? `<button class="stop-training-btn" onclick="stopTraining(${job.id})">Stop</button>`
+                        : ""
+                    }
+                </td>
+            `;
+            row.cells[0].textContent = job.name || `#${String(job.id).padStart(3, "0")}`;
+            row.cells[1].textContent = job.dataset;
+            if (job.status === 'Error') {
+                const errorLink = document.createElement('a');
+                errorLink.className = 'status error';
+                errorLink.textContent = 'Error';
+                errorLink.href = `/api/training/${encodeURIComponent(job.name)}/errors`;
+                errorLink.target = '_blank';
+                errorLink.rel = 'noopener';
+                errorLink.title = 'View training errors';
+                row.cells[6].replaceChildren(errorLink);
+            }
+            const view = document.createElement('a');
+            view.textContent = 'View';
+            view.href = `/api/training/${encodeURIComponent(job.name)}/config`;
+            view.target = '_blank';
+            view.rel = 'noopener';
+            view.style.marginLeft = '8px';
+            row.cells[8].appendChild(view);
+            table.appendChild(row);
+        });
+    } catch (error) {
+        console.error("Training history error:", error);
+    }
+}
+async function stopTraining(runId) {
+    const confirmed = confirm(
+        `Stop training #${String(runId).padStart(3, "0")}?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch(`/api/training/${runId}/stop`, {
+            method: "POST"
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                result.message || "Failed to stop training"
+            );
+        }
+
+        loadTrainingHistory();
+    } catch (error) {
+        console.error("Stop training error:", error);
+        alert(error.message);
+    }
+}
+
+function formatRuntime(milliseconds) {
+    if (!milliseconds) return "0s";
+
+    const totalSeconds = Math.floor(milliseconds / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    if (hours > 0) {
+        return `${hours}h ${minutes}m`;
+    }
+
+    if (minutes > 0) {
+        return `${minutes}m ${seconds}s`;
+    }
+
+    return `${seconds}s`;
+}
+async function loadTrainingDatasets() {
+    const datasetSelect = document.getElementById("dataset");
+
+    if (!datasetSelect) return;
+
+    try {
+        const response = await fetch("/api/datasets");
+
+        if (!response.ok) {
+            throw new Error("Failed to retrieve datasets");
+        }
+
+        const datasets = await response.json();
+
+        datasetSelect.innerHTML = `
+            <option value="">Select dataset</option>
+        `;
+
+        datasets.forEach(dataset => {
+            const option = document.createElement("option");
+
+            option.value = dataset.name;
+            option.textContent = dataset.name;
+
+            datasetSelect.appendChild(option);
+        });
+    } catch (error) {
+        console.error("Dataset loading error:", error);
+    }
+}
+    </script>
+</body>
+</html>

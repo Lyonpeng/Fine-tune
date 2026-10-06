@@ -1,0 +1,38 @@
+# Uploaded datasets and generated training runs (including models and metrics)
+/public/uploads/
+/datasets/
+/outputs/
+
+# Model weights and checkpoints stored outside the output directory
+*.pth
+*.pt
+*.ckpt
+*.onnx
+*.safetensors
+
+# Node dependencies, build output, and caches
+node_modules/
+/dist/
+/build/
+coverage/
+.cache/
+.npm/
+*.tsbuildinfo
+
+# Python environments and caches
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Local editor and operating system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+Desktop.ini
