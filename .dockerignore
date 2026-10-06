@@ -1,0 +1,26 @@
+# Node
+node_modules
+npm-debug.log
+
+# Python caches / local environments (deps are reinstalled in the image)
+**/__pycache__
+*.pyc
+.venv
+venv
+
+# Runtime data (mounted as volumes; should not be baked into the image)
+public/uploads
+outputs
+
+# Model weights and checkpoints
+*.pth
+*.pt
+*.ckpt
+
+# Dev / VCS
+.git
+.gitignore
+*.md
+.vscode
+.idea
+.claude

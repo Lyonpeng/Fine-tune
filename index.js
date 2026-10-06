@@ -1,6 +1,8 @@
 const express = require('express');
 const app = express();
-const port = 5000;
+const port = process.env.PORT || 5000;
+// Python interpreter that has detectron2 (e.g. a conda env locally, "python" in Docker)
+const PYTHON_BIN = process.env.PYTHON_BIN || "python";
 const path = require('path');
 const { spawn } = require("child_process");
 const { createRun, saveRun, readHistory, isValidRunName, runNameExists } = require('./training/history');
@@ -445,7 +447,7 @@ if (!fs.existsSync(datasetPath)) {
         args.push("--advanced-config", advancedConfig);
     }
 
-    const pythonProcess = spawn("python", args, {
+    const pythonProcess = spawn(PYTHON_BIN, args, {
         cwd: __dirname
     });
     job.process = pythonProcess;

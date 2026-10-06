@@ -1,0 +1,6 @@
+# torch and torchvision come preinstalled in the pytorch/pytorch base image, and
+# detectron2 is built from source in the Dockerfile (it pulls in fvcore, iopath,
+# pycocotools, etc.). These are the remaining dependencies of train_net.py.
+numpy<2            # matches the local detectron_env (numpy 1.26.4)
+matplotlib         # training_loss.png
+pycocotools        # COCO-format annotation loading

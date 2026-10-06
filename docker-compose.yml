@@ -1,0 +1,27 @@
+services:
+  app:
+    build: .
+    image: acacia-finetune
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+    volumes:
+      # persist uploaded datasets and training runs (weights, metrics, logs)
+      # outside the container
+      - ./public/uploads:/app/public/uploads
+      - ./outputs:/app/outputs
+    # PyTorch DataLoader workers share batches through /dev/shm; Docker's 64 MB
+    # default makes training crash with "bus error"
+    shm_size: "8gb"
+    # tiny init as PID 1 so stopped/finished Python training processes are reaped
+    init: true
+    # NVIDIA GPU access (requires nvidia-container-toolkit on the host)
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
