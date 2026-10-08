@@ -1,6 +1,6 @@
 const express = require('express');
 const app = express();
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 3001;
 // Python interpreter that has detectron2 (e.g. a conda env locally, "python" in Docker)
 const PYTHON_BIN = process.env.PYTHON_BIN || "python";
 const path = require('path');
