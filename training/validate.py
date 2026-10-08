@@ -23,7 +23,7 @@ from detectron2.data.datasets import register_coco_instances
 from detectron2.evaluation.coco_evaluation import instances_to_coco_json
 from detectron2.modeling import build_model
 
-from train_net import find_annotation
+from train_net import find_annotation, match_file_names
 
 # Names of COCOeval.stats, in order
 STAT_NAMES = [
@@ -56,14 +56,7 @@ def prepare_ground_truth(annotation_path, image_names, dataset_path, output_dir)
     if not coco_json["images"]:
         raise ValueError("No validation images selected")
 
-    # Annotation names may differ in case from the files (2.JPG vs 2.jpg),
-    # which only works on case-insensitive file systems; use the real names
-    on_disk = {name.lower(): name for name in os.listdir(dataset_path)}
-    for image in coco_json["images"]:
-        actual = on_disk.get(image["file_name"].lower())
-        if actual is None:
-            raise FileNotFoundError(f"Image not found in the dataset folder: {image['file_name']}")
-        image["file_name"] = actual
+    match_file_names(coco_json, dataset_path)
 
     coco_json.setdefault("info", {})
     coco_json.setdefault("licenses", [])

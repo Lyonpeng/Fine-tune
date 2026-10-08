@@ -27,6 +27,18 @@ def find_annotation(dataset_path):
     return os.path.join(dataset_path, json_files[0])
 
 
+def match_file_names(coco_json, dataset_path):
+    """Annotation names may differ in case from the uploaded files (2.JPG vs
+    2.jpg), which only works on case-insensitive file systems such as
+    Windows; point each image at its real file name instead."""
+    on_disk = {name.lower(): name for name in os.listdir(dataset_path)}
+    for image in coco_json["images"]:
+        actual = on_disk.get(image["file_name"].lower())
+        if actual is None:
+            raise FileNotFoundError(f"Image not found in the dataset folder: {image['file_name']}")
+        image["file_name"] = actual
+
+
 def parse_advanced_config(config_text):
     opts = []
 
@@ -159,7 +171,15 @@ def setup(args):
     if not os.path.isdir(dataset_path):
         raise FileNotFoundError(f"Dataset folder not found: {dataset_path}")
     annotation_path = find_annotation(dataset_path)
-    register_coco_instances(dataset_name, {}, annotation_path, dataset_path)
+
+    # register a copy whose file names match the files on disk
+    with open(annotation_path, "r", encoding="utf-8") as file:
+        coco_json = json.load(file)
+    match_file_names(coco_json, dataset_path)
+    train_annotation_path = os.path.join(cfg.OUTPUT_DIR, "annotation.json")
+    with open(train_annotation_path, "w", encoding="utf-8") as file:
+        json.dump(coco_json, file)
+    register_coco_instances(dataset_name, {}, train_annotation_path, dataset_path)
 
     cfg.freeze()
 
