@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Home</title>
+    <title>IADA</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -132,6 +132,19 @@
         .main-content p {
             color: #9ca3af;
         }
+
+        /* Annotate page: kept in its own container so the VIA iframe (and any
+           unsaved annotations in it) survives switching to other pages */
+        #annotateHost {
+            margin-left: 220px;
+            height: 100vh;
+            padding: 80px 24px 24px;   /* 56px top bar + 24px */
+        }
+
+        #annotateHost[hidden],
+        .main-content[hidden] {
+            display: none;
+        }
     </style>
 </head>
 
@@ -146,22 +159,15 @@
 
     <!-- Sidebar -->
     <div class="sidebar">
-        <a href="#" class="active" data-page="home" onclick="loadPage('home'); return false;">Home</a>
+        <a href="#" class="active" data-page="annotate" onclick="loadPage('annotate'); return false;">Annotate</a>
         <a href="#" data-page="data" onclick="loadPage('data'); return false;">Data</a>
         <a href="#" data-page="train" onclick="loadPage('train'); return false;">Train</a>
         <a href="#" data-page="model" onclick="loadPage('model'); return false;">Model</a>
+        <a href="#" data-page="validation" onclick="loadPage('validation'); return false;">Validation</a>
     </div>
     <!-- Main page -->
-    <main class="main-content">
-
-        <h1>Home</h1>
-
-        <p>
-            Welcome to the application.
-            Use the sidebar to navigate between the different sections.
-        </p>
-
-    </main>
+    <main class="main-content" hidden></main>
+    <div id="annotateHost"></div>
     <script>
 
         async function loadPage(page) {
@@ -170,10 +176,27 @@
                 link.classList.toggle("active", link.dataset.page === page);
             });
 
+            const main = document.querySelector(".main-content");
+            const annotateHost = document.getElementById("annotateHost");
+
+            // The Annotate page is loaded once and then only hidden/shown, since
+            // replacing it would reload VIA and discard its annotations
+            if (page === "annotate") {
+                if (!annotateHost.hasChildNodes()) {
+                    const response = await fetch("/pages/annotate");
+                    annotateHost.innerHTML = await response.text();
+                }
+                main.hidden = true;
+                annotateHost.hidden = false;
+                return;
+            }
+            annotateHost.hidden = true;
+            main.hidden = false;
+
             const response = await fetch(`/pages/${page}`);
             const html = await response.text();
 
-            document.querySelector(".main-content").innerHTML = html;
+            main.innerHTML = html;
 
             if (page === "data") {
                 loadDatasets();
@@ -182,6 +205,12 @@
             if (page === "train") {
                 loadTrainingDatasets();
                 loadTrainingHistory();
+            }
+
+            if (page === "validation") {
+                selectedValidationId = null;
+                loadValidationDatasets();
+                loadValidationHistory();
             }
         }
         setInterval(() => {
@@ -455,7 +484,7 @@
         if (jobs.length === 0) {
             table.innerHTML = `
                 <tr>
-                    <td colspan="9">No training runs.</td>
+                    <td colspan="10">No training runs.</td>
                 </tr>
             `;
             return;
@@ -478,6 +507,7 @@
                         ${job.status}
                     </span>
                 </td>
+                <td>${job.startTime ? formatDateTime(job.startTime) : '-'}</td>
                 <td>${job.runtime == null ? '-' : formatRuntime(job.runtime)}</td>
                 <td>
                     <div class="history-actions">
@@ -488,7 +518,20 @@
                     </div>
                 </td>
             `;
-            row.cells[0].textContent = job.name || `#${String(job.id).padStart(3, "0")}`;
+            // the run name links to the run's YAML configuration
+            const runLabel = job.name || `#${String(job.id).padStart(3, "0")}`;
+            if (job.name) {
+                const configLink = document.createElement('a');
+                configLink.className = 'run-config-link';
+                configLink.textContent = runLabel;
+                configLink.href = `/api/training/${encodeURIComponent(job.name)}/config`;
+                configLink.target = '_blank';
+                configLink.rel = 'noopener';
+                configLink.title = 'View YAML configuration';
+                row.cells[0].replaceChildren(configLink);
+            } else {
+                row.cells[0].textContent = runLabel;
+            }
             row.cells[1].textContent = job.dataset;
             if (job.status === 'Error') {
                 const errorLink = document.createElement('a');
@@ -500,13 +543,6 @@
                 errorLink.title = 'View training errors';
                 row.cells[6].replaceChildren(errorLink);
             }
-            const view = document.createElement('a');
-            view.textContent = 'View';
-            view.href = `/api/training/${encodeURIComponent(job.name)}/config`;
-            view.target = '_blank';
-            view.rel = 'noopener';
-            view.style.marginLeft = '8px';
-            row.cells[8].appendChild(view);
             table.appendChild(row);
         });
     } catch (error) {
@@ -588,6 +624,330 @@ async function loadTrainingDatasets() {
         console.error("Dataset loading error:", error);
     }
 }
+// ---------- Validation page ----------
+let selectedValidationId = null;
+let validationRunning = false;
+
+// COCOeval.stats, in the order validate.py reports them
+const VALIDATION_STATS = [
+    ["AP", "AP @ IoU 0.50:0.95"],
+    ["AP50", "AP @ IoU 0.50"],
+    ["AP75", "AP @ IoU 0.75"],
+    ["APs", "AP, small objects"],
+    ["APm", "AP, medium objects"],
+    ["APl", "AP, large objects"],
+    ["AR1", "AR, 1 detection per image"],
+    ["AR10", "AR, 10 detections per image"],
+    ["AR100", "AR, 100 detections per image"],
+    ["ARs", "AR, small objects"],
+    ["ARm", "AR, medium objects"],
+    ["ARl", "AR, large objects"]
+];
+
+// COCOeval reports -1 when there is nothing to measure (e.g. no small objects)
+function formatMetric(value) {
+    return value == null || value < 0 ? "n/a" : value.toFixed(3);
+}
+
+function formatDateTime(time) {
+    return new Date(time).toLocaleString("en-GB", {
+        timeZone: "Asia/Brunei", dateStyle: "medium", timeStyle: "short"
+    }) + " (BNT)";
+}
+
+function createElement(tag, className, text) {
+    const element = document.createElement(tag);
+    if (className) element.className = className;
+    if (text != null) element.textContent = text;
+    return element;
+}
+
+async function loadValidationDatasets() {
+    const select = document.getElementById("validationDataset");
+    if (!select) return;
+
+    try {
+        const response = await fetch("/api/datasets");
+        if (!response.ok) {
+            throw new Error("Failed to retrieve datasets");
+        }
+        const datasets = await response.json();
+
+        // only annotated datasets can be scored
+        datasets.filter(dataset => dataset.annotation).forEach(dataset => {
+            const option = createElement("option", null, `${dataset.name} (${dataset.imageCount} images)`);
+            option.value = dataset.name;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error("Validation dataset error:", error);
+    }
+}
+
+async function loadValidationImages() {
+    const dataset = document.getElementById("validationDataset").value;
+    const list = document.getElementById("validationImageList");
+    const selectAll = document.getElementById("validationSelectAll");
+
+    selectAll.disabled = true;
+    updateValidationNotice();
+
+    if (!dataset) {
+        list.replaceChildren(createElement("p", "validation-empty", "Select a dataset to list its annotated images."));
+        updateValidationSelection();
+        return;
+    }
+
+    list.replaceChildren(createElement("p", "validation-empty", "Loading images..."));
+    updateValidationSelection();
+
+    try {
+        const response = await fetch(`/api/datasets/${encodeURIComponent(dataset)}/images`);
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(result.message || "Failed to load images");
+        }
+        // another dataset was picked while this one loaded
+        if (document.getElementById("validationDataset")?.value !== dataset) return;
+
+        if (result.images.length === 0) {
+            list.replaceChildren(createElement("p", "validation-empty", "No annotated images found in this dataset."));
+        } else {
+            list.replaceChildren(...result.images.map(image => {
+                const label = createElement("label");
+                const checkbox = createElement("input");
+                checkbox.type = "checkbox";
+                checkbox.value = image.fileName;
+                checkbox.checked = true;
+                checkbox.onchange = updateValidationSelection;
+                label.append(
+                    checkbox,
+                    createElement("span", "image-name", image.fileName),
+                    createElement("span", "image-objects", `${image.objects} objects`)
+                );
+                label.title = image.fileName;
+                return label;
+            }));
+            selectAll.disabled = false;
+        }
+    } catch (error) {
+        if (document.getElementById("validationDataset")?.value !== dataset) return;
+        list.replaceChildren(createElement("p", "validation-empty error", error.message));
+    }
+    updateValidationSelection();
+}
+
+function selectAllValidationImages(checked) {
+    document.querySelectorAll("#validationImageList input[type=checkbox]").forEach(checkbox => {
+        checkbox.checked = checked;
+    });
+    updateValidationSelection();
+}
+
+function selectedValidationImages() {
+    return [...document.querySelectorAll("#validationImageList input[type=checkbox]:checked")]
+        .map(checkbox => checkbox.value);
+}
+
+function updateValidationSelection() {
+    const checkboxes = document.querySelectorAll("#validationImageList input[type=checkbox]");
+    const selected = selectedValidationImages().length;
+    const selectAll = document.getElementById("validationSelectAll");
+
+    document.getElementById("validationImageCount").textContent =
+        checkboxes.length ? `${selected} of ${checkboxes.length} selected` : "";
+    selectAll.checked = checkboxes.length > 0 && selected === checkboxes.length;
+    selectAll.indeterminate = selected > 0 && selected < checkboxes.length;
+    document.getElementById("runValidationBtn").disabled =
+        !document.getElementById("validationModel").value || selected === 0;
+}
+
+// warn when the model is scored on the data it was trained on
+function updateValidationNotice() {
+    const option = document.getElementById("validationModel").selectedOptions[0];
+    const dataset = document.getElementById("validationDataset").value;
+    const notice = document.getElementById("validationNotice");
+    const trainedOn = option?.dataset.dataset;
+
+    notice.hidden = !(dataset && trainedOn === dataset);
+    notice.textContent = `This model was trained on "${dataset}". Validating on its own training data gives optimistic results; use a separate dataset for a fair score.`;
+    updateValidationSelection();
+}
+
+async function startValidation() {
+    const option = document.getElementById("validationModel").selectedOptions[0];
+    const dataset = document.getElementById("validationDataset").value;
+    const images = selectedValidationImages();
+    const button = document.getElementById("runValidationBtn");
+
+    if (!option?.value || !dataset || images.length === 0) return;
+
+    button.disabled = true;
+    try {
+        const response = await fetch("/api/validation", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                run: option.dataset.run,
+                filename: option.dataset.file,
+                dataset,
+                images
+            })
+        });
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(result.message || "Failed to start validation");
+        }
+        selectedValidationId = result.id;
+        await loadValidationHistory();
+    } catch (error) {
+        console.error("Validation error:", error);
+        alert(error.message);
+    } finally {
+        if (document.getElementById("runValidationBtn")) updateValidationSelection();
+    }
+}
+
+async function loadValidationHistory() {
+    const table = document.getElementById("validationHistory");
+    if (!table) return;
+
+    try {
+        const response = await fetch("/api/validation");
+        if (!response.ok) {
+            throw new Error("Failed to retrieve validation results");
+        }
+        const jobs = await response.json();
+        validationRunning = jobs.some(job => job.status === "Running");
+
+        if (jobs.length === 0) {
+            table.innerHTML = `<tr><td colspan="9">No validation results.</td></tr>`;
+            renderValidationDetails(null);
+            return;
+        }
+
+        table.replaceChildren(...jobs.map(job => {
+            const row = document.createElement("tr");
+            const box = job.metrics?.results?.bbox;
+            const mask = job.metrics?.results?.segm;
+
+            row.classList.toggle("selected", job.id === selectedValidationId);
+            row.innerHTML = `
+                <td></td>
+                <td></td>
+                <td>${job.imageCount}</td>
+                <td><span class="status ${job.status.toLowerCase()}"></span></td>
+                <td class="metric">${box ? formatMetric(box.stats.AP50) : "-"}</td>
+                <td class="metric">${mask ? formatMetric(mask.stats.AP50) : "-"}</td>
+                <td class="metric">${box ? formatMetric(box.f1_50) : "-"}</td>
+                <td>${formatDateTime(job.startTime)}</td>
+                <td></td>
+            `;
+            row.cells[0].append(job.run, createElement("span", "model-file", job.filename));
+            row.cells[1].textContent = job.dataset;
+            row.cells[3].firstElementChild.textContent =
+                job.status === "Running" && job.progress
+                    ? `Running ${job.progress.done}/${job.progress.total}`
+                    : job.status;
+
+            if (["Completed", "Error"].includes(job.status)) {
+                const view = createElement("button", "validation-view-btn", job.status === "Error" ? "View Error" : "View");
+                view.onclick = () => {
+                    selectedValidationId = job.id;
+                    table.querySelectorAll("tr").forEach(other => other.classList.toggle("selected", other === row));
+                    renderValidationDetails(job);
+                    document.getElementById("validationDetails").scrollIntoView({ behavior: "smooth" });
+                };
+                row.cells[8].appendChild(view);
+            }
+            return row;
+        }));
+
+        renderValidationDetails(jobs.find(job => job.id === selectedValidationId) || null);
+    } catch (error) {
+        console.error("Validation history error:", error);
+    }
+}
+
+function renderValidationDetails(job) {
+    const section = document.getElementById("validationDetails");
+    if (!section) return;
+
+    if (!job || !["Completed", "Error"].includes(job.status)) {
+        section.hidden = true;
+        section.replaceChildren();
+        return;
+    }
+
+    const header = createElement("div", "validation-section-header");
+    header.appendChild(createElement("h2", null, job.status === "Error" ? "Validation Error" : "Validation Metrics"));
+
+    const meta = createElement("div", "validation-details-meta");
+    const addMeta = (label, value) => {
+        const item = createElement("span", null, `${label}: `);
+        item.appendChild(createElement("strong", null, value));
+        meta.appendChild(item);
+    };
+    addMeta("Model", `${job.run} / ${job.filename}`);
+    addMeta("Trained on", job.trainedOn || "Unknown");
+    addMeta("Validation dataset", job.dataset);
+    addMeta("Images", String(job.imageCount));
+    if (job.metrics) {
+        addMeta("Ground-truth objects", String(job.metrics.annotations));
+        addMeta("Predictions", String(job.metrics.predictions));
+        addMeta("Score threshold", String(job.metrics.scoreThreshold));
+    }
+    if (job.runtime != null) addMeta("Runtime", formatRuntime(job.runtime));
+
+    section.replaceChildren(header, meta);
+
+    if (job.status === "Error" || !job.metrics) {
+        section.appendChild(createElement("pre", "validation-error", job.error || "Metrics are not available for this validation."));
+        section.hidden = false;
+        return;
+    }
+
+    const cards = createElement("div", "validation-metric-cards");
+    [["bbox", "Bounding Box"], ["segm", "Segmentation Mask"]].forEach(([key, title]) => {
+        const result = job.metrics.results[key];
+        if (!result) return;
+
+        const card = createElement("div", "validation-metric-card");
+        card.appendChild(createElement("h3", null, title));
+
+        const headline = createElement("div", "validation-headline");
+        [["Precision @ 0.50", result.precision50], ["Recall @ 0.50", result.recall50], ["F1 @ 0.50", result.f1_50]]
+            .forEach(([label, value]) => {
+                const tile = createElement("div");
+                tile.append(createElement("span", null, label), createElement("strong", null, formatMetric(value)));
+                headline.appendChild(tile);
+            });
+        card.appendChild(headline);
+
+        const stats = createElement("table", "validation-stats");
+        VALIDATION_STATS.forEach(([name, label]) => {
+            const row = stats.insertRow();
+            row.insertCell().textContent = label;
+            const cell = row.insertCell();
+            cell.textContent = formatMetric(result.stats[name]);
+            if (cell.textContent === "n/a") cell.className = "na";
+        });
+        card.appendChild(stats);
+        cards.appendChild(card);
+    });
+    section.appendChild(cards);
+    section.hidden = false;
+}
+
+// refresh progress while a validation is running
+setInterval(() => {
+    if (validationRunning && document.getElementById("validationHistory")) {
+        loadValidationHistory();
+    }
+}, 2000);
+
+        // Annotate is the landing page
+        loadPage("annotate");
     </script>
 </body>
 </html>

@@ -150,6 +150,9 @@ app.get('/pages/data', (req, res) => {
 app.get('/pages/train', (req, res) => {
   res.render('train');
 });
+app.get('/pages/annotate', (req, res) => {
+  res.render('annotate');
+});
 app.get('/pages/model', (req, res) => {
   res.set('Cache-Control', 'no-store').render('model', {
     models: readModels(trainingRoot, trainingJobs)
@@ -510,6 +513,151 @@ if (!fs.existsSync(datasetPath)) {
         message: "Training started",
         runId
     });
+});
+
+// ---------- Validation ----------
+const { createValidation, saveValidation, readValidations, readDatasetImages } = require('./training/validation');
+const validationRoot = path.join(__dirname, 'outputs', 'validation');
+let validationJobs = [];
+
+// path of an uploaded dataset folder, or null for an invalid / missing name
+function datasetFolder(name) {
+    if (typeof name !== 'string' || !name.trim() || name === '.' || name === '..' || /[\\/:]/.test(name)) {
+        return null;
+    }
+    const folder = path.join(__dirname, 'public', 'uploads', name);
+    return fs.existsSync(folder) && fs.statSync(folder).isDirectory() ? folder : null;
+}
+
+app.get('/pages/validation', (req, res) => {
+    res.set('Cache-Control', 'no-store').render('validation', {
+        models: readModels(trainingRoot, trainingJobs)
+    });
+});
+
+app.get('/api/datasets/:name/images', (req, res) => {
+    const folder = datasetFolder(req.params.name);
+    if (!folder) {
+        return res.status(404).json({ message: 'Dataset not found' });
+    }
+    try {
+        res.json(readDatasetImages(folder));
+    } catch (error) {
+        res.status(422).json({ message: error.message });
+    }
+});
+
+app.get('/api/validation', (req, res) => {
+    const now = Date.now();
+    res.json(readValidations(validationRoot, validationJobs).map(({ process, outputDir, ...job }) => ({
+        ...job,
+        runtime: job.status === 'Running' ? now - job.startTime
+            : job.endTime ? job.endTime - job.startTime : null
+    })));
+});
+
+app.post('/api/validation', (req, res) => {
+    const { run, filename, dataset, images } = req.body;
+
+    // only models listed on the Model page can be validated
+    const model = readModels(trainingRoot, trainingJobs)
+        .find(item => item.name === run && item.filename === filename);
+    if (!model) {
+        return res.status(404).json({ message: 'Selected model does not exist' });
+    }
+    if (!model.hasConfig) {
+        return res.status(422).json({ message: 'The selected model has no training configuration (config.yaml).' });
+    }
+
+    const datasetPath = datasetFolder(dataset);
+    if (!datasetPath) {
+        return res.status(404).json({ message: 'Selected dataset does not exist' });
+    }
+
+    let available;
+    try {
+        available = new Set(readDatasetImages(datasetPath).images.map(image => image.fileName));
+    } catch (error) {
+        return res.status(422).json({ message: error.message });
+    }
+    const selected = Array.isArray(images) ? [...new Set(images)] : [];
+    if (!selected.length || !selected.every(image => available.has(image))) {
+        return res.status(400).json({ message: 'Please select validation images from the dataset.' });
+    }
+
+    const { id, outputDir } = createValidation(validationRoot);
+    const imagesFile = path.join(outputDir, 'images.json');
+    fs.writeFileSync(imagesFile, JSON.stringify(selected));
+
+    const job = {
+        id,
+        outputDir,
+        run: model.name,
+        filename: model.filename,
+        model: model.model,
+        trainedOn: model.dataset,
+        dataset,
+        imageCount: selected.length,
+        status: 'Running',
+        progress: null,
+        error: null,
+        startTime: Date.now(),
+        endTime: null,
+        exitCode: null
+    };
+    validationJobs.unshift(job);
+    saveValidation(job);
+
+    const runDir = path.join(trainingRoot, model.name);
+    const pythonProcess = spawn(PYTHON_BIN, [
+        path.join(__dirname, 'training', 'validate.py'),
+        '--config-file', path.join(runDir, 'config.yaml'),
+        '--weights', path.join(runDir, model.filename),
+        '--dataset', datasetPath,
+        '--images-file', imagesFile,
+        '--output-dir', outputDir
+    ], { cwd: __dirname });
+    job.process = pythonProcess;
+    let stderrTail = '';
+
+    pythonProcess.stdout.on('data', data => {
+        const output = data.toString();
+        console.log(`[VALIDATE ${id}] ${output}`);
+        const progress = [...output.matchAll(/^PROGRESS (\d+)\/(\d+)/gm)].pop();
+        if (progress) {
+            job.progress = { done: Number(progress[1]), total: Number(progress[2]) };
+        }
+    });
+
+    pythonProcess.stderr.on('data', data => {
+        const output = data.toString();
+        stderrTail = (stderrTail + output).slice(-8000);
+        console.error(`[VALIDATE ${id}] ${output}`);
+    });
+
+    pythonProcess.on('error', error => {
+        console.error(`Validation ${id} failed:`, error);
+        job.status = 'Error';
+        job.error = error.message;
+        job.endTime = Date.now();
+        saveValidation(job);
+    });
+
+    pythonProcess.on('close', code => {
+        console.log(`Validation ${id} finished with code ${code}`);
+        job.exitCode = code;
+        job.endTime = Date.now();
+        job.process = null;
+        if (job.status !== 'Error') {
+            job.status = code === 0 ? 'Completed' : 'Error';
+            if (code !== 0) {
+                job.error = stderrTail.trim() || `Validation exited with code ${code}`;
+            }
+        }
+        saveValidation(job);
+    });
+
+    res.status(202).json({ message: 'Validation started', id });
 });
 async function loadTrainingHistory() {
     const table = document.getElementById("runtimeHistory");
