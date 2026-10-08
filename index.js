@@ -148,15 +148,12 @@ app.get('/pages/data', (req, res) => {
   res.render('data');
 });
 app.get('/pages/train', (req, res) => {
-  res.render('train');
+  res.set('Cache-Control', 'no-store').render('train', {
+    models: readModels(trainingRoot, trainingJobs)
+  });
 });
 app.get('/pages/annotate', (req, res) => {
   res.render('annotate');
-});
-app.get('/pages/model', (req, res) => {
-  res.set('Cache-Control', 'no-store').render('model', {
-    models: readModels(trainingRoot, trainingJobs)
-  });
 });
 // Listen on the port
 app.listen(port, () => console.log(`App listening on port ${port}`));
@@ -559,7 +556,7 @@ app.get('/api/validation', (req, res) => {
 app.post('/api/validation', (req, res) => {
     const { run, filename, dataset, images } = req.body;
 
-    // only models listed on the Model page can be validated
+    // only models listed under Available Models on the Train page can be validated
     const model = readModels(trainingRoot, trainingJobs)
         .find(item => item.name === run && item.filename === filename);
     if (!model) {
